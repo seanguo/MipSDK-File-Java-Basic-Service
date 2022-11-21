@@ -26,30 +26,30 @@
 */
 package com.microsoft.mipsdksample;
 
-import com.microsoft.aad.msal4j.IAccount;
+import com.microsoft.aad.msal4j.ClientCredentialFactory;
+import com.microsoft.aad.msal4j.ClientCredentialParameters;
+import com.microsoft.aad.msal4j.ConfidentialClientApplication;
 import com.microsoft.aad.msal4j.IAuthenticationResult;
-import com.microsoft.aad.msal4j.InteractiveRequestParameters;
-import com.microsoft.aad.msal4j.MsalException;
-import com.microsoft.aad.msal4j.Prompt;
-import com.microsoft.aad.msal4j.PublicClientApplication;
-import com.microsoft.aad.msal4j.SilentParameters;
 import com.microsoft.informationprotection.ApplicationInfo;
 import com.microsoft.informationprotection.IAuthDelegate;
 import com.microsoft.informationprotection.Identity;
 
-import java.net.URI;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class AuthDelegateImpl implements IAuthDelegate {
 
+    public static final String MIP_CLIENT_SECRET_VALUE = "mipClientSecretValue";
     private static String CLIENT_ID = "";
+    private static String SECRET_VALUE = "";
     private static String AUTHORITY = "";
     private static Set<String> SCOPE = Collections.singleton("");
 
     public AuthDelegateImpl(ApplicationInfo appInfo)
     {
         CLIENT_ID = appInfo.getApplicationId();
+        SECRET_VALUE = System.getProperty(MIP_CLIENT_SECRET_VALUE) != null ? System.getProperty(MIP_CLIENT_SECRET_VALUE) : System.getenv(MIP_CLIENT_SECRET_VALUE);
     }
 
     @Override
@@ -61,7 +61,8 @@ public class AuthDelegateImpl implements IAuthDelegate {
             SCOPE = Collections.singleton(resource + "/.default");        
         }
 
-        AUTHORITY = authority;
+        System.out.println("AUTHORITY: " + AUTHORITY);
+        AUTHORITY = "https://login.microsoftonline.com/f2a8ad30-c8dc-422f-b038-ade361364001";
         String token = "";
         try {
             token = acquireTokenInteractive().accessToken();
@@ -72,50 +73,20 @@ public class AuthDelegateImpl implements IAuthDelegate {
         return token;
     }
 
-    
     private static IAuthenticationResult acquireTokenInteractive() throws Exception {
 
-        // Load token cache from file and initialize token cache aspect. The token cache will have
-        // dummy data, so the acquireTokenSilently call will fail.
-        TokenCacheAspect tokenCacheAspect = new TokenCacheAspect("sample_cache.json");
-
-        PublicClientApplication pca = PublicClientApplication.builder(CLIENT_ID)
+        ConfidentialClientApplication app = ConfidentialClientApplication.builder(
+                        CLIENT_ID,
+                        ClientCredentialFactory.createFromSecret(SECRET_VALUE))
                 .authority(AUTHORITY)
-                .setTokenCacheAccessAspect(tokenCacheAspect)
+                .build();
+        // With client credentials flows the scope is ALWAYS of the shape "resource/.default", as the
+        // application permissions need to be set statically (in the portal), and then granted by a tenant administrator
+        ClientCredentialParameters clientCredentialParam = ClientCredentialParameters.builder(
+                        SCOPE)
                 .build();
 
-        Set<IAccount> accountsInCache = pca.getAccounts().join();
-        // Take first account in the cache. In a production application, you would filter
-        // accountsInCache to get the right account for the user authenticating.
-        IAccount account = accountsInCache.iterator().next();
-
-        IAuthenticationResult result;
-        try {
-            SilentParameters silentParameters =
-                    SilentParameters
-                            .builder(SCOPE, account)
-                            .build();
-
-            // try to acquire token silently. This call will fail since the token cache
-            // does not have any data for the user you are trying to acquire a token for
-            result = pca.acquireTokenSilently(silentParameters).join();
-        } catch (Exception ex) {
-            if (ex.getCause() instanceof MsalException) {
-
-                InteractiveRequestParameters parameters = InteractiveRequestParameters
-                        .builder(new URI("http://localhost"))                        
-                        .prompt(Prompt.SELECT_ACCOUNT) // Change this value to avoid repeated auth prompts. 
-                        .scopes(SCOPE)
-                        .build();
-
-                // Try to acquire a token interactively with system browser. If successful, you should see
-                // the token and account information printed out to console
-                result = pca.acquireToken(parameters).join();
-            } else {
-                // Handle other exceptions accordingly
-                throw ex;
-            }
-        }
-        return result;
+        CompletableFuture<IAuthenticationResult> future = app.acquireToken(clientCredentialParam);
+        return future.get();
     }
 }

@@ -52,6 +52,7 @@ import com.microsoft.informationprotection.file.IFileEngine;
 import com.microsoft.informationprotection.file.IFileHandler;
 
 public class Action {
+    private static final String MIP_DY_LIB_PATCH = "mipLibPath";
 
     AuthDelegateImpl authDelegate;    
     IFileProfile fileProfile;
@@ -65,7 +66,7 @@ public class Action {
         authDelegate = new AuthDelegateImpl(appInfo);
         
         // Initialize MIP For File SDK components.        
-        MIP.initialize(MipComponent.FILE, "C:\\mip\\releases\\1.11.53\\java\\file\\bins\\debug\\amd64");
+        MIP.initialize(MipComponent.FILE, System.getProperty(MIP_DY_LIB_PATCH) != null ? System.getProperty(MIP_DY_LIB_PATCH) : "/MipSDK-File-Java-Basic-Service");
 
         // Create MIP Configuration
         // MIP Configuration can be used to set various delegates, feature flags, and other SDK behavior. 

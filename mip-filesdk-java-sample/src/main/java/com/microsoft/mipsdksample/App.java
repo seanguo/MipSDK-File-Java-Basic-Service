@@ -35,7 +35,10 @@ import com.microsoft.informationprotection.ApplicationInfo;
 import com.microsoft.informationprotection.AssignmentMethod;
 import com.microsoft.informationprotection.DataState;
 
+//java -DmipClientId={mipClientId} -DmipClientSecretValue={mipClientSecretValue} -DmipLibPath=/MipSDK-File-Java-Basic-Service -jar target/mipsdksample-1.0.jar
 public class App {
+    private static final String MIP_CLIENT_ID = "mipClientId";
+
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
@@ -44,7 +47,8 @@ public class App {
         ApplicationInfo appInfo = new ApplicationInfo();
         FileOptions options = new FileOptions();
 
-        appInfo.setApplicationId("YOUR CLIENT ID");
+        String clientId = System.getProperty(MIP_CLIENT_ID) != null ? System.getProperty(MIP_CLIENT_ID) : System.getenv(MIP_CLIENT_ID);
+        appInfo.setApplicationId(clientId);
         appInfo.setApplicationName("MIP SDK Java Sample");
         appInfo.setApplicationVersion("1.11");
 
